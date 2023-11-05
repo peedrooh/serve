@@ -2,6 +2,8 @@
 
 float startAngle = 0; //starting angle
 int magnetStatus = 0; //value of the status register (MD, ML, MH)
+TwoWire _wire_ams = TwoWire(0);
+
 extern void check_magnet_presence() {  
     //This function runs in the setup() and it locks the MCU until the magnet is not positioned properly
 
@@ -9,13 +11,13 @@ extern void check_magnet_presence() {
     while((magnetStatus & 32) != 32) {
         magnetStatus = 0; //reset reading
 
-        Wire.beginTransmission(0x36); //connect to the sensor
-        Wire.write(0x0B); //figure 21 - register map: Status: MD ML MH
-        Wire.endTransmission(); //end transmission
-        Wire.requestFrom(0x36, 1); //request from the sensor
+        _wire_ams.beginTransmission(0x36); //connect to the sensor
+        _wire_ams.write(0x0B); //figure 21 - register map: Status: MD ML MH
+        _wire_ams.endTransmission(); //end transmission
+        _wire_ams.requestFrom(0x36, 1); //request from the sensor
 
-        while(Wire.available() == 0); //wait until it becomes available 
-        magnetStatus = Wire.read(); //Reading the data after the request
+        while(_wire_ams.available() == 0); //wait until it becomes available 
+        magnetStatus = _wire_ams.read(); //Reading the data after the request
 
         Serial.print("Magnet status: ");
         Serial.println(magnetStatus, BIN); //print it in binary so you can compare it to the table (fig 21)      
@@ -31,8 +33,8 @@ extern void check_magnet_presence() {
 }
 
 extern void ams5600_begin(unsigned int SDA, unsigned int SCL) {
-    Wire.begin(SDA, SCL); //start i2C  
-	Wire.setClock(800000L); //fast clock
+    _wire_ams.begin(SDA, SCL); //start i2C  
+	_wire_ams.setClock(800000L); //fast clock
 
     check_magnet_presence(); //check the magnet (blocks until magnet is found)
 }
@@ -43,22 +45,22 @@ int rawAngle; //final raw angle
 float degAngle; //raw angle in degrees (360/4096 * [value between 0-4095])
 extern void read_raw_angle() { 
     //7:0 - bits
-    Wire.beginTransmission(0x36); //connect to the sensor
-    Wire.write(0x0D); //figure 21 - register map: Raw angle (7:0)
-    Wire.endTransmission(); //end transmission
-    Wire.requestFrom(0x36, 1); //request from the sensor
+    _wire_ams.beginTransmission(0x36); //connect to the sensor
+    _wire_ams.write(0x0D); //figure 21 - register map: Raw angle (7:0)
+    _wire_ams.endTransmission(); //end transmission
+    _wire_ams.requestFrom(0x36, 1); //request from the sensor
     
-    while(Wire.available() == 0); //wait until it becomes available 
-    lowbyte = Wire.read(); //Reading the data after the request
+    while(_wire_ams.available() == 0); //wait until it becomes available 
+    lowbyte = _wire_ams.read(); //Reading the data after the request
     
     //11:8 - 4 bits
-    Wire.beginTransmission(0x36);
-    Wire.write(0x0C); //figure 21 - register map: Raw angle (11:8)
-    Wire.endTransmission();
-    Wire.requestFrom(0x36, 1);
+    _wire_ams.beginTransmission(0x36);
+    _wire_ams.write(0x0C); //figure 21 - register map: Raw angle (11:8)
+    _wire_ams.endTransmission();
+    _wire_ams.requestFrom(0x36, 1);
     
-    while(Wire.available() == 0);  
-    highbyte = Wire.read();
+    while(_wire_ams.available() == 0);  
+    highbyte = _wire_ams.read();
     
     //4 bits have to be shifted to its proper place as we want to build a 12-bit number
     highbyte = highbyte << 8; //shifting to left
