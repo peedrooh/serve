@@ -10,5 +10,5 @@ extern bool get_button_state() {
     bool state = digitalRead(BUTTON_PIN);
     delay(50);
 
-    return !state;
+    return state;
 }
