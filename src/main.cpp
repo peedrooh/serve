@@ -135,13 +135,21 @@ void loop() {
     int lower_limit_freq = 0;
     int upper_limit_freq = 100;
     bool is_lower_limit = true;
+    bool angle_toggle = false;
 
     for(int freq = 2; freq < 100; freq = freq + 2) {
         prev_time_millis = millis();
         time_in_millis = millis();
         initial_servo_position = degAngle;
         while(time_in_millis - prev_time_millis < (1000/freq) * 10) {
-            servo_driver(freq, 50);
+            if (angle_toggle) {
+                angle_toggle = !angle_toggle;
+                servo_driver(freq, 60);
+            }
+            else {
+                angle_toggle = !angle_toggle;
+                servo_driver(freq, 50);
+            }
             time_in_millis = millis();
         }
         read_raw_angle();
@@ -161,4 +169,42 @@ void loop() {
     }
     // Serial.println(lower_limit_freq);
     // Serial.println(upper_limit_freq);
+
+
+    // SERVO POSITION VERIFICATION
+    bool servo_is_accurate = false;
+    servo_driver(50, 0);
+    delay(1000);
+    initial_servo_position = degAngle;
+
+    servo_driver(50, 25);
+    delay(1000);
+    float delta_servo_angle = abs(degAngle - initial_servo_position);
+    if(delta_servo_angle >= 87.0 && delta_servo_angle <= 93.0) {
+        servo_is_accurate = true;
+    } else if (delta_servo_angle >= 42.0 && delta_servo_angle <= 48.0) {
+        servo_is_accurate = true;
+    } else if (delta_servo_angle >= 20.0 && delta_servo_angle <= 26.0) {
+        servo_is_accurate = true;
+    } else {
+        servo_is_accurate = false;
+    }
+
+    servo_driver(50, 50);
+    delay(1000);
+    float delta_servo_angle = abs(degAngle - initial_servo_position);
+    if(delta_servo_angle >= 177.0 && delta_servo_angle <= 183.0) {
+        servo_is_accurate = true;
+    } else if (delta_servo_angle >= 87.0 && delta_servo_angle <= 93.0) {
+        servo_is_accurate = true;
+    } else if (delta_servo_angle >= 42.0  && delta_servo_angle <= 48.0) {
+        servo_is_accurate = true;
+    } else {
+        servo_is_accurate = false;
+    }
+
+    Serial.println(servo_is_accurate);
+    // TODO1: improve servo_drive, so that is not a delay but it waits the servo goes to write position or 
+    // maximun time and checks if current is not too high
+    // TODO2: send data to webserver that display if servo is good or not
 }
