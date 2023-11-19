@@ -12,3 +12,16 @@ extern void servo_driver(int frequency_hz, int duty_cicle_percent) {
     digitalWrite(OPTO_PIN, LOW);
     delay(period_ms * (1 - (duty_cicle_percent/100.0)));
 }
+
+extern void rotate_servo(int position_percentage, int duration_ms, int frequency_hz) {
+    float period_ms = 1000.0 / frequency_hz;
+    unsigned long start_time = millis();
+    unsigned long current_time = millis();
+    while(current_time - start_time < duration_ms) {
+        digitalWrite(OPTO_PIN, HIGH);
+        delayMicroseconds( (1000.0*position_percentage / 100) + 1000.0);
+        digitalWrite(OPTO_PIN, LOW);
+        delay(period_ms - ((1.0 * (position_percentage/100)) + 1));
+        current_time = millis();
+    }
+}
