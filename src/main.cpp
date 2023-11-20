@@ -21,39 +21,39 @@ void setup() {
     Serial.begin(115200);
 
 
-    // // -------------------------------------------
-    // // AMS5600 SETUP
-    // // -------------------------------------------
-    // ams5600_begin(SDA_AMS, SCL_AMS);
-    // check_magnet_presence();
-    // read_raw_angle();
-    // startAngle = degAngle;
+    // -------------------------------------------
+    // AMS5600 SETUP
+    // -------------------------------------------
+    ams5600_begin(SDA_AMS, SCL_AMS);
+    check_magnet_presence();
+    read_raw_angle();
+    startAngle = degAngle;
 
-    // // -------------------------------------------
-    // // LED'S SETUP
-    // // -------------------------------------------
-    // if (!leds_setup()) Serial.println("Failed to setup led's.");
+    // -------------------------------------------
+    // LED'S SETUP
+    // -------------------------------------------
+    if (!leds_setup()) Serial.println("Failed to setup led's.");
 
 
-    // // -------------------------------------------
-    // // RELE SETUP
-    // // -------------------------------------------
-    // if(!rele_setup()) Serial.println("Failed to setup the rele.");
+    // -------------------------------------------
+    // RELE SETUP
+    // -------------------------------------------
+    if(!rele_setup()) Serial.println("Failed to setup the rele.");
 
-    // // -------------------------------------------
-    // // BUTTON SETUP
-    // // -------------------------------------------
-    // if (!button_setup()) Serial.println("Failed to setup button.");
+    // -------------------------------------------
+    // BUTTON SETUP
+    // -------------------------------------------
+    if (!button_setup()) Serial.println("Failed to setup button.");
     
     // -------------------------------------------
     // SERVO DRIVER SETUP
     // -------------------------------------------
     if (!servo_driver_setup()) Serial.println("Failed to setup servo driver.");
 
-    // // -------------------------------------------
-    // // INA219 SETUP
-    // // -------------------------------------------
-    // if(!ina219_setup(SDA_INA, SCL_INA)) Serial.println("Failed to setup ina219.");
+    // -------------------------------------------
+    // INA219 SETUP
+    // -------------------------------------------
+    if(!ina219_setup(SDA_INA, SCL_INA)) Serial.println("Failed to setup ina219.");
 }
 
 void loop() {
@@ -63,6 +63,7 @@ void loop() {
     // read_raw_angle(); // get a relative position (an angle from 0 to 360 deg)
     // correct_angle(); // get the absolute position since statup
     // check_quadrant(); // check current quadrant
+    // Serial.println(degAngle);
     
     // // -------------------------------------------
     // // TURN LED'S AND RELE ON AND OFF
@@ -84,11 +85,6 @@ void loop() {
     // // -------------------------------------------
     // bool state = get_button_state();
     // Serial.println(state);
-
-    // // -------------------------------------------
-    // // OPTO USAGE
-    // // -------------------------------------------
-    // servo_driver(50, 10);
 
     // // -------------------------------------------
     // // INA219 USAGE
@@ -208,9 +204,114 @@ void loop() {
     // maximun time and checks if current is not too high
     // TODO2: send data to webserver that display if servo is good or not
     // unsigned long time = millis();
-    rotate_servo(35, 10000, 50);
-    delay(2000);
-    // rotate_servo(100, 1000, 50);
+    // rotate_servo(35, 10000, 50);
     // delay(2000);
+    // // rotate_servo(100, 1000, 50);
+    // // delay(2000);
+
+    // ----------------------------------------------------------------------------------------------------------
+    // ----------------------------------------------------------------------------------------------------------
+    // ----------------------------------------------------------------------------------------------------------
+    // ---------------------------------------    MAIN LOOP  ----------------------------------------------------
+    // ----------------------------------------------------------------------------------------------------------
+    // ----------------------------------------------------------------------------------------------------------
+    // ----------------------------------------------------------------------------------------------------------
+    // TODO0: wait's a click to start program
+    bool is_positional_servo = false;
+    bool button_state = get_button_state();
+    if (!button_state) return;
+
+    // TODO1: check if is positional or continuos rotation servo
+    // send to zero
+    // read_raw_angle();ü
+    float initial_servo_position = degAngle;
+    // // send to 50 percent, if servo doesn't stop it is a continuos rotation servo
+    // unsigned long start_time = millis();
+    // unsigned long current_time = millis();
+    // while(current_time - start_time < 1000) {
+    //     rotate_servo(50, 10, 50);
+    //     current_time = millis();
+    // }
+    // read_raw_angle();
+    float second_servo_position = degAngle;
+    // rotate_servo(50, 100, 50);
+    // read_raw_angle();
+    
+    // if (degAngle >= second_servo_position - 5 && degAngle <= second_servo_position + 5) {
+    //     is_positional_servo = true;
+    // } else {
+    //     is_positional_servo = false;
+    // }
+
+    // TODO2: if is continuos rotation check max velocity and zero velocity
+    // max velocity check
+    // float max_servo_velocity_1;
+    // float max_servo_velocity_2;
+    // float max_servo_velocity_3;
+    // float max_servo_velocity_deg_s;
+    // delay(500);
+    // if(!is_positional_servo) {
+    //     read_raw_angle();
+    //     initial_servo_position = degAngle;
+    //     rotate_servo(100, 500, 50);
+    //     read_raw_angle();
+    //     second_servo_position = degAngle;
+    //     max_servo_velocity_1 = abs(second_servo_position - initial_servo_position)/0.5;
+    //     delay(1000);
+
+    //     read_raw_angle();
+    //     initial_servo_position = degAngle;
+    //     rotate_servo(100, 500, 50);
+    //     read_raw_angle();
+    //     second_servo_position = degAngle;
+    //     max_servo_velocity_2 = abs(second_servo_position - initial_servo_position)/0.5;
+    //     delay(1000);
+
+    //     read_raw_angle();
+    //     initial_servo_position = degAngle;
+    //     rotate_servo(100, 500, 50);
+    //     read_raw_angle();
+    //     second_servo_position = degAngle;
+    //     max_servo_velocity_3 = abs(second_servo_position - initial_servo_position)/0.5;
+    //     delay(1000);
+    // }
+    // max_servo_velocity_deg_s = (max_servo_velocity_1+max_servo_velocity_2+max_servo_velocity_3)/3;
+    // Serial.print(max_servo_velocity_deg_s);
+    // Serial.println(" deg/s.");
+
+    // check zero duty cycle
+    rotate_servo(0, 200, 50);
+    read_raw_angle();
+    int i = 2;
+    for(i; i < 100; i = i + 2) {
+        read_raw_angle();
+        initial_servo_position = degAngle;
+        rotate_servo(i, 200, 50);
+        read_raw_angle();
+        delay(200);
+        second_servo_position = degAngle;
+
+        if(initial_servo_position == second_servo_position) break;
+    }
+    Serial.println(i);
+
+    for(i; i < 100; i = i + 2) {
+        read_raw_angle();
+        initial_servo_position = degAngle;
+        Serial.println(initial_servo_position);
+        rotate_servo(i, 200, 50);
+        read_raw_angle();
+        delay(200);
+        second_servo_position = degAngle;
+        Serial.println(second_servo_position);
+
+        if(initial_servo_position != second_servo_position) break;
+    }
+    Serial.println(i);
+    rotate_servo(i, 2000, 50);
+
+    // TODO3: if is positional check if it goes to write positions
+    // TODO4: send all to a webserver
+
 
 }
