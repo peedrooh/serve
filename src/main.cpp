@@ -19,8 +19,6 @@
 
 void setup() {
     Serial.begin(115200);
-
-
     // -------------------------------------------
     // AMS5600 SETUP
     // -------------------------------------------
@@ -33,7 +31,6 @@ void setup() {
     // LED'S SETUP
     // -------------------------------------------
     if (!leds_setup()) Serial.println("Failed to setup led's.");
-
 
     // -------------------------------------------
     // RELE SETUP
@@ -55,6 +52,134 @@ void setup() {
     // -------------------------------------------
     if(!ina219_setup(SDA_INA, SCL_INA)) Serial.println("Failed to setup ina219.");
 }
+
+
+void check_servo_type(bool& is_positional) {
+    read_raw_angle();
+    // send to 50 percent, if servo doesn't stop it is a continuos rotation servo
+    unsigned long start_time = millis();
+    unsigned long current_time = millis();
+    while(current_time - start_time < 1000) {
+        rotate_servo(50, 10, 50);
+        current_time = millis();
+    }
+    read_raw_angle();
+    float first_position = degAngle;
+    rotate_servo(50, 100, 50);
+    read_raw_angle();
+    
+    if (degAngle >= first_position - 5 && degAngle <= first_position + 5) {
+        is_positional = true;
+    } else {
+        is_positional = false;
+    }
+}
+
+
+void check_continuos_rotation_params(float& initial_servo_position, float& second_servo_position, float& max_velocity, int& lower_zero_vel_freq, int& upper_zero_vel_freq) {
+    float max_servo_velocity_1;
+    float max_servo_velocity_2;
+    float max_servo_velocity_3;
+    float max_servo_velocity_deg_s;
+    delay(500);
+    
+    read_raw_angle();
+    initial_servo_position = degAngle;
+    rotate_servo(100, 500, 50);
+    read_raw_angle();
+    second_servo_position = degAngle;
+    max_servo_velocity_1 = abs(second_servo_position - initial_servo_position)/0.5;
+    delay(1000);
+
+    read_raw_angle();
+    initial_servo_position = degAngle;
+    rotate_servo(100, 500, 50);
+    read_raw_angle();
+    second_servo_position = degAngle;
+    max_servo_velocity_2 = abs(second_servo_position - initial_servo_position)/0.5;
+    delay(1000);
+
+    read_raw_angle();
+    initial_servo_position = degAngle;
+    rotate_servo(100, 500, 50);
+    read_raw_angle();
+    second_servo_position = degAngle;
+    max_servo_velocity_3 = abs(second_servo_position - initial_servo_position)/0.5;
+    delay(1000);
+    
+    max_velocity = (max_servo_velocity_1+max_servo_velocity_2+max_servo_velocity_3)/3;
+
+    // check zero duty cycle
+    rotate_servo(0, 200, 50);
+    read_raw_angle();
+    int i = 2;
+    for(i; i < 100; i = i + 2) {
+        read_raw_angle();
+        initial_servo_position = degAngle;
+        rotate_servo(i, 200, 50);
+        read_raw_angle();
+        delay(200);
+        second_servo_position = degAngle;
+
+        if(initial_servo_position == second_servo_position) break;
+    }
+    lower_zero_vel_freq = i;
+
+    for(i; i < 100; i = i + 2) {
+        read_raw_angle();
+        initial_servo_position = degAngle;
+        rotate_servo(i, 200, 50);
+        read_raw_angle();
+        delay(200);
+        second_servo_position = degAngle;
+
+        if(initial_servo_position != second_servo_position) break;
+    }
+    upper_zero_vel_freq = i;
+}
+
+bool check_positional_servo_params(float& initial_servo_position, float& second_servo_position, int& expected_half_position, int& expected_full_position, float& actual_half_position, float& actual_full_position) {
+    bool servo_is_accurate = false;
+    
+    rotate_servo(0, 1000, 50);
+    read_raw_angle();
+    delay(200);
+    initial_servo_position = degAngle;
+
+    // send servo to 50%
+    rotate_servo(50, 1000, 50);
+    read_raw_angle();
+    delay(200);
+    second_servo_position = degAngle;
+
+    float angle_difference = abs(second_servo_position - initial_servo_position);
+
+    if(angle_difference < 45+10 && angle_difference > 45-10 ) {
+        expected_half_position = 45;
+        expected_full_position = 90;
+        actual_half_position = angle_difference;
+    } else if(angle_difference < 90+10 && angle_difference > 90-10 ) {
+        expected_half_position = 90;
+        expected_full_position = 180;
+        actual_half_position = angle_difference;
+    } else if(angle_difference < 180+10 && angle_difference > 180-10 ) {
+        expected_half_position = 180;
+        expected_full_position = 360;
+        actual_half_position = angle_difference;
+    };
+
+
+    // send servo to 100%
+    rotate_servo(100, 1000, 50);
+    read_raw_angle();
+    delay(200);
+    second_servo_position = degAngle;
+    angle_difference = abs(second_servo_position - initial_servo_position);
+    actual_full_position = angle_difference;
+
+    return servo_is_accurate;
+}
+
 
 void loop() {
     // // -------------------------------------------
@@ -104,111 +229,6 @@ void loop() {
 
     // delay(2000);
 
-    // // -------------------------------------------
-    // // MAIN LOGIC
-    // // -------------------------------------------
-    // bool is_running = false;
-    // unsigned long time_in_millis = millis();
-    // unsigned long prev_time_millis = millis();
-
-    // if(get_current_mA() > 1000.0) {
-    //     set_rele_state(0);
-    //     set_running_led_state(0);
-    //     return;
-    // }
-
-    // if(!is_running && get_button_state()) {
-    //     is_running = true;
-    //     delay(500);
-    //     return;
-    // }
-
-    // // Initial encoder position
-    // read_raw_angle();
-    // float initial_servo_position = degAngle;
-
-    // // DEAD ZONE CHECK
-    // int lower_limit_freq = 0;
-    // int upper_limit_freq = 100;
-    // bool is_lower_limit = true;
-    // bool angle_toggle = false;
-
-    // for(int freq = 2; freq < 100; freq = freq + 2) {
-    //     prev_time_millis = millis();
-    //     time_in_millis = millis();
-    //     initial_servo_position = degAngle;
-    //     while(time_in_millis - prev_time_millis < (1000/freq) * 10) {
-    //         if (angle_toggle) {
-    //             angle_toggle = !angle_toggle;
-    //             servo_driver(freq, 60);
-    //         }
-    //         else {
-    //             angle_toggle = !angle_toggle;
-    //             servo_driver(freq, 50);
-    //         }
-    //         time_in_millis = millis();
-    //     }
-    //     read_raw_angle();
-
-    //     if(abs(initial_servo_position - degAngle) > 5  && is_lower_limit) {
-    //         lower_limit_freq = freq;
-    //         is_lower_limit = false;
-    //     }
-
-    //     if(!is_lower_limit && abs(initial_servo_position - degAngle) < 1) {
-    //         upper_limit_freq = freq;
-    //         freq = 100;
-    //         break;
-    //     }
-    //     // Serial.println(freq);
-    //     delay(100);
-    // }
-    // // Serial.println(lower_limit_freq);
-    // // Serial.println(upper_limit_freq);
-
-
-    // // SERVO POSITION VERIFICATION
-    // bool servo_is_accurate = false;
-    // servo_driver(50, 0);
-    // delay(1000);
-    // initial_servo_position = degAngle;
-
-    // servo_driver(50, 25);
-    // delay(1000);
-    // float delta_servo_angle = abs(degAngle - initial_servo_position);
-    // if(delta_servo_angle >= 87.0 && delta_servo_angle <= 93.0) {
-    //     servo_is_accurate = true;
-    // } else if (delta_servo_angle >= 42.0 && delta_servo_angle <= 48.0) {
-    //     servo_is_accurate = true;
-    // } else if (delta_servo_angle >= 20.0 && delta_servo_angle <= 26.0) {
-    //     servo_is_accurate = true;
-    // } else {
-    //     servo_is_accurate = false;
-    // }
-
-    // servo_driver(50, 50);
-    // delay(1000);
-    // float delta_servo_angle = abs(degAngle - initial_servo_position);
-    // if(delta_servo_angle >= 177.0 && delta_servo_angle <= 183.0) {
-    //     servo_is_accurate = true;
-    // } else if (delta_servo_angle >= 87.0 && delta_servo_angle <= 93.0) {
-    //     servo_is_accurate = true;
-    // } else if (delta_servo_angle >= 42.0  && delta_servo_angle <= 48.0) {
-    //     servo_is_accurate = true;
-    // } else {
-    //     servo_is_accurate = false;
-    // }
-
-    // Serial.println(servo_is_accurate);
-    // TODO1: improve servo_drive, so that is not a delay but it waits the servo goes to write position or 
-    // maximun time and checks if current is not too high
-    // TODO2: send data to webserver that display if servo is good or not
-    // unsigned long time = millis();
-    // rotate_servo(35, 10000, 50);
-    // delay(2000);
-    // // rotate_servo(100, 1000, 50);
-    // // delay(2000);
-
     // ----------------------------------------------------------------------------------------------------------
     // ----------------------------------------------------------------------------------------------------------
     // ----------------------------------------------------------------------------------------------------------
@@ -220,97 +240,33 @@ void loop() {
     bool is_positional_servo = false;
     bool button_state = get_button_state();
     if (!button_state) return;
+    Serial.println("oi");
 
     // TODO1: check if is positional or continuos rotation servo
-    // send to zero
-    // read_raw_angle();ü
     float initial_servo_position = degAngle;
-    // // send to 50 percent, if servo doesn't stop it is a continuos rotation servo
-    // unsigned long start_time = millis();
-    // unsigned long current_time = millis();
-    // while(current_time - start_time < 1000) {
-    //     rotate_servo(50, 10, 50);
-    //     current_time = millis();
-    // }
-    // read_raw_angle();
-    float second_servo_position = degAngle;
-    // rotate_servo(50, 100, 50);
-    // read_raw_angle();
-    
-    // if (degAngle >= second_servo_position - 5 && degAngle <= second_servo_position + 5) {
-    //     is_positional_servo = true;
-    // } else {
-    //     is_positional_servo = false;
-    // }
+    check_servo_type(is_positional_servo);
 
     // TODO2: if is continuos rotation check max velocity and zero velocity
-    // max velocity check
-    // float max_servo_velocity_1;
-    // float max_servo_velocity_2;
-    // float max_servo_velocity_3;
-    // float max_servo_velocity_deg_s;
-    // delay(500);
-    // if(!is_positional_servo) {
-    //     read_raw_angle();
-    //     initial_servo_position = degAngle;
-    //     rotate_servo(100, 500, 50);
-    //     read_raw_angle();
-    //     second_servo_position = degAngle;
-    //     max_servo_velocity_1 = abs(second_servo_position - initial_servo_position)/0.5;
-    //     delay(1000);
+    float second_servo_position = degAngle;
+    float max_servo_velocity_deg_s;
+    int lower_zero_vel_freq = 0;
+    int upper_zero_vel_freq = 0;
 
-    //     read_raw_angle();
-    //     initial_servo_position = degAngle;
-    //     rotate_servo(100, 500, 50);
-    //     read_raw_angle();
-    //     second_servo_position = degAngle;
-    //     max_servo_velocity_2 = abs(second_servo_position - initial_servo_position)/0.5;
-    //     delay(1000);
-
-    //     read_raw_angle();
-    //     initial_servo_position = degAngle;
-    //     rotate_servo(100, 500, 50);
-    //     read_raw_angle();
-    //     second_servo_position = degAngle;
-    //     max_servo_velocity_3 = abs(second_servo_position - initial_servo_position)/0.5;
-    //     delay(1000);
-    // }
-    // max_servo_velocity_deg_s = (max_servo_velocity_1+max_servo_velocity_2+max_servo_velocity_3)/3;
-    // Serial.print(max_servo_velocity_deg_s);
-    // Serial.println(" deg/s.");
-
-    // check zero duty cycle
-    rotate_servo(0, 200, 50);
-    read_raw_angle();
-    int i = 2;
-    for(i; i < 100; i = i + 2) {
-        read_raw_angle();
-        initial_servo_position = degAngle;
-        rotate_servo(i, 200, 50);
-        read_raw_angle();
-        delay(200);
-        second_servo_position = degAngle;
-
-        if(initial_servo_position == second_servo_position) break;
+    if (!is_positional_servo) {
+        check_continuos_rotation_params(initial_servo_position, second_servo_position, max_servo_velocity_deg_s, lower_zero_vel_freq, upper_zero_vel_freq);
     }
-    Serial.println(i);
-
-    for(i; i < 100; i = i + 2) {
-        read_raw_angle();
-        initial_servo_position = degAngle;
-        Serial.println(initial_servo_position);
-        rotate_servo(i, 200, 50);
-        read_raw_angle();
-        delay(200);
-        second_servo_position = degAngle;
-        Serial.println(second_servo_position);
-
-        if(initial_servo_position != second_servo_position) break;
-    }
-    Serial.println(i);
-    rotate_servo(i, 2000, 50);
 
     // TODO3: if is positional check if it goes to write positions
+    bool servo_is_accurate = false;
+    int expected_half_position = 0;
+    int expected_full_position = 0;
+    float actual_half_position = 0;
+    float actual_full_position = 0;
+
+    if(is_positional_servo) {
+        servo_is_accurate = check_positional_servo_params(initial_servo_position, second_servo_position, expected_half_position, expected_full_position, actual_half_position, actual_full_position);
+    }
+
     // TODO4: send all to a webserver
 
 
