@@ -1,5 +1,6 @@
 #include <Arduino.h>
 #include <Wire.h>
+#include <WiFi.h>
 
 #include <Adafruit_INA219.h>
 
@@ -54,18 +55,18 @@ void setup() {
 }
 
 
-void check_servo_type(bool& is_positional) {
+bool check_servo_type(bool& is_positional) {
     read_raw_angle();
     // send to 50 percent, if servo doesn't stop it is a continuos rotation servo
     unsigned long start_time = millis();
     unsigned long current_time = millis();
     while(current_time - start_time < 1000) {
-        rotate_servo(50, 10, 50);
+        if(!rotate_servo(50, 10, 50)) return false;
         current_time = millis();
     }
     read_raw_angle();
     float first_position = degAngle;
-    rotate_servo(50, 100, 50);
+    if(!rotate_servo(50, 100, 50)) return false;
     read_raw_angle();
     
     if (degAngle >= first_position - 5 && degAngle <= first_position + 5) {
@@ -73,10 +74,11 @@ void check_servo_type(bool& is_positional) {
     } else {
         is_positional = false;
     }
+    return true;
 }
 
 
-void check_continuos_rotation_params(float& initial_servo_position, float& second_servo_position, float& max_velocity, int& lower_zero_vel_freq, int& upper_zero_vel_freq) {
+bool check_continuos_rotation_params(float& initial_servo_position, float& second_servo_position, float& max_velocity, int& lower_zero_vel_freq, int& upper_zero_vel_freq) {
     float max_servo_velocity_1;
     float max_servo_velocity_2;
     float max_servo_velocity_3;
@@ -85,7 +87,7 @@ void check_continuos_rotation_params(float& initial_servo_position, float& secon
     
     read_raw_angle();
     initial_servo_position = degAngle;
-    rotate_servo(100, 500, 50);
+    if(!rotate_servo(100, 500, 50)) return false;
     read_raw_angle();
     second_servo_position = degAngle;
     max_servo_velocity_1 = abs(second_servo_position - initial_servo_position)/0.5;
@@ -93,7 +95,7 @@ void check_continuos_rotation_params(float& initial_servo_position, float& secon
 
     read_raw_angle();
     initial_servo_position = degAngle;
-    rotate_servo(100, 500, 50);
+    if(!rotate_servo(100, 500, 50))  return false;
     read_raw_angle();
     second_servo_position = degAngle;
     max_servo_velocity_2 = abs(second_servo_position - initial_servo_position)/0.5;
@@ -101,7 +103,7 @@ void check_continuos_rotation_params(float& initial_servo_position, float& secon
 
     read_raw_angle();
     initial_servo_position = degAngle;
-    rotate_servo(100, 500, 50);
+    if(!rotate_servo(100, 500, 50))  return false;
     read_raw_angle();
     second_servo_position = degAngle;
     max_servo_velocity_3 = abs(second_servo_position - initial_servo_position)/0.5;
@@ -110,13 +112,13 @@ void check_continuos_rotation_params(float& initial_servo_position, float& secon
     max_velocity = (max_servo_velocity_1+max_servo_velocity_2+max_servo_velocity_3)/3;
 
     // check zero duty cycle
-    rotate_servo(0, 200, 50);
+    if(!rotate_servo(0, 200, 50)) return false;
     read_raw_angle();
     int i = 2;
     for(i; i < 100; i = i + 2) {
         read_raw_angle();
         initial_servo_position = degAngle;
-        rotate_servo(i, 200, 50);
+        if(!rotate_servo(i, 200, 50)) return false;
         read_raw_angle();
         delay(200);
         second_servo_position = degAngle;
@@ -128,7 +130,7 @@ void check_continuos_rotation_params(float& initial_servo_position, float& secon
     for(i; i < 100; i = i + 2) {
         read_raw_angle();
         initial_servo_position = degAngle;
-        rotate_servo(i, 200, 50);
+        if(!rotate_servo(i, 200, 50)) return false;
         read_raw_angle();
         delay(200);
         second_servo_position = degAngle;
@@ -136,18 +138,20 @@ void check_continuos_rotation_params(float& initial_servo_position, float& secon
         if(initial_servo_position != second_servo_position) break;
     }
     upper_zero_vel_freq = i;
+    return true;
 }
 
-bool check_positional_servo_params(float& initial_servo_position, float& second_servo_position, int& expected_half_position, int& expected_full_position, float& actual_half_position, float& actual_full_position) {
-    bool servo_is_accurate = false;
+
+bool check_positional_servo_params(bool& servo_is_accurate, float& initial_servo_position, float& second_servo_position, int& expected_half_position, int& expected_full_position, float& actual_half_position, float& actual_full_position) {
+    servo_is_accurate = false;
     
-    rotate_servo(0, 1000, 50);
+    if(!rotate_servo(0, 1000, 50)) return false;
     read_raw_angle();
     delay(200);
     initial_servo_position = degAngle;
 
     // send servo to 50%
-    rotate_servo(50, 1000, 50);
+    if(rotate_servo(50, 1000, 50)) return false;
     read_raw_angle();
     delay(200);
     second_servo_position = degAngle;
@@ -170,81 +174,43 @@ bool check_positional_servo_params(float& initial_servo_position, float& second_
 
 
     // send servo to 100%
-    rotate_servo(100, 1000, 50);
+    if(!rotate_servo(100, 1000, 50)) return false;
     read_raw_angle();
     delay(200);
     second_servo_position = degAngle;
     angle_difference = abs(second_servo_position - initial_servo_position);
     actual_full_position = angle_difference;
 
-    return servo_is_accurate;
+    return true;
 }
 
 
 void loop() {
-    // // -------------------------------------------
-    // // AMS5600 USAGE
-    // // -------------------------------------------
-    // read_raw_angle(); // get a relative position (an angle from 0 to 360 deg)
-    // correct_angle(); // get the absolute position since statup
-    // check_quadrant(); // check current quadrant
-    // Serial.println(degAngle);
-    
-    // // -------------------------------------------
-    // // TURN LED'S AND RELE ON AND OFF
-    // // -------------------------------------------
-    // set_running_led_state(1);
-    // set_servo_led_state(1);
-    // set_wifi_led_state(1);
-    // set_rele_state(1);
-    // delay(1000);
-    // set_running_led_state(0);
-    // set_servo_led_state(0);
-    // set_wifi_led_state(0);
-    // set_rele_state(0);
-    // delay(1000);
-    // // -------------------------------
-
-    // // -------------------------------------------
-    // // BUTTON USAGE
-    // // -------------------------------------------
-    // bool state = get_button_state();
-    // Serial.println(state);
-
-    // // -------------------------------------------
-    // // INA219 USAGE
-    // // -------------------------------------------
-    // get_shunt_voltage_mV();
-    // get_bus_voltage_V();
-    // get_current_mA();
-    // get_power_mW();
-    // get_load_voltage_V();
-    
-    // Serial.print("Bus Voltage:   "); Serial.print(bus_voltage); Serial.println(" V");
-    // Serial.print("Shunt Voltage: "); Serial.print(shunt_voltage); Serial.println(" mV");
-    // Serial.print("Load Voltage:  "); Serial.print(load_voltage); Serial.println(" V");
-    // Serial.print("Current:       "); Serial.print(current_mA); Serial.println(" mA");
-    // Serial.print("Power:         "); Serial.print(power_mW); Serial.println(" mW");
-    // Serial.println("");
-
-    // delay(2000);
-
-    // ----------------------------------------------------------------------------------------------------------
-    // ----------------------------------------------------------------------------------------------------------
-    // ----------------------------------------------------------------------------------------------------------
-    // ---------------------------------------    MAIN LOOP  ----------------------------------------------------
-    // ----------------------------------------------------------------------------------------------------------
-    // ----------------------------------------------------------------------------------------------------------
-    // ----------------------------------------------------------------------------------------------------------
     // TODO0: wait's a click to start program
+    set_servo_led_state(1);
+    set_running_led_state(0);
+    set_wifi_led_state(0);
+
     bool is_positional_servo = false;
+
     bool button_state = get_button_state();
     if (!button_state) return;
     Serial.println("oi");
+    
+    set_rele_state(0);
+    set_running_led_state(1);
+
+    delay(200);
+    float current = get_current_mA();
+    
+    if(get_current_mA() > 500.0) {
+        set_rele_state(1);
+        return;
+    }
 
     // TODO1: check if is positional or continuos rotation servo
     float initial_servo_position = degAngle;
-    check_servo_type(is_positional_servo);
+    if(!check_servo_type(is_positional_servo))return;
 
     // TODO2: if is continuos rotation check max velocity and zero velocity
     float second_servo_position = degAngle;
@@ -253,7 +219,7 @@ void loop() {
     int upper_zero_vel_freq = 0;
 
     if (!is_positional_servo) {
-        check_continuos_rotation_params(initial_servo_position, second_servo_position, max_servo_velocity_deg_s, lower_zero_vel_freq, upper_zero_vel_freq);
+        if(!check_continuos_rotation_params(initial_servo_position, second_servo_position, max_servo_velocity_deg_s, lower_zero_vel_freq, upper_zero_vel_freq))return;
     }
 
     // TODO3: if is positional check if it goes to write positions
@@ -264,7 +230,7 @@ void loop() {
     float actual_full_position = 0;
 
     if(is_positional_servo) {
-        servo_is_accurate = check_positional_servo_params(initial_servo_position, second_servo_position, expected_half_position, expected_full_position, actual_half_position, actual_full_position);
+        if(check_positional_servo_params(servo_is_accurate, initial_servo_position, second_servo_position, expected_half_position, expected_full_position, actual_half_position, actual_full_position))return;
     }
 
     // TODO4: send all to a webserver
