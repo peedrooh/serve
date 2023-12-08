@@ -25,7 +25,7 @@ extern bool rotate_servo(int position_percentage, int duration_ms, int frequency
         digitalWrite(OPTO_PIN, LOW);
         delay(period_ms - ((1.0 * (position_percentage/100)) + 1));
         current_time = millis();
-        if(get_current_mA() > 1000.0) {
+        if(get_current_mA() > 1500.0) {
             set_rele_state(1);
             return false;
         }
