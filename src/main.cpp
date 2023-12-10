@@ -36,10 +36,6 @@ float actual_full_position;
 
 void setup() {
     Serial.begin(115200);
-    set_rele_state(1);
-    set_running_led_state(0);
-    set_servo_led_state(0);
-    set_wifi_led_state(0);
 
     ams5600_begin(SDA_AMS, SCL_AMS);
     check_magnet_presence();
@@ -51,6 +47,11 @@ void setup() {
     if (!button_setup()) Serial.println("Failed to setup button.");
     if (!servo_driver_setup()) Serial.println("Failed to setup servo driver.");
     if(!ina219_setup(SDA_INA, SCL_INA)) Serial.println("Failed to setup ina219.");
+    
+    set_rele_state(1);
+    set_running_led_state(0);
+    set_servo_led_state(0);
+    set_wifi_led_state(0);
 
     delay(2000);
     wifi_setup();
@@ -63,7 +64,7 @@ void setup() {
         "WiFi Reconnector",
         30000,
         NULL,
-        1,
+        4,
         NULL
     );
 
@@ -72,7 +73,7 @@ void setup() {
         "MQTT Reconnector",
         30000,
         NULL,
-        2,
+        3,
         NULL
     );
 
@@ -81,7 +82,7 @@ void setup() {
         "MQTT Publisher",
         30000,
         NULL,
-        3,
+        2,
         NULL
     );
 
@@ -105,28 +106,33 @@ void publish_mqtt_msg(void* parameter) {
     for(;;){
         vTaskDelay(MQTT_MESSAGE_RATE);
         if(finished_running && is_positional_servo) {
+            Serial.print("Meia pos. esperada: ");
+            Serial.println(expected_half_position);
+            Serial.print("Meia pos. medida: ");
+            Serial.println(actual_half_position);
+            Serial.print("Pos. Completa esperada: ");
+            Serial.println(expected_full_position);
+            Serial.print("Pos. Completa medida: ");
+            Serial.println(actual_full_position);
             MQTT.publish(SERVO_TYPE_TOPIC, String(is_positional_servo).c_str());
             MQTT.publish(PS_SERVO_IS_ACCURATE, String(servo_is_accurate).c_str());
             MQTT.publish(PS_SERVO_EXP_HALF_POS, String(expected_half_position).c_str());
-            MQTT.publish(PS_SERVO_ACT_HALF_POS, String(expected_full_position).c_str());
-            MQTT.publish(PS_SERVO_EXP_FULL_POS, String(actual_half_position).c_str());
-            MQTT.publish(PS_SERVO_ACT_FULL_POS, String(actual_full_position).c_str());
-            Serial.print("Tipo de servo publicado no tópico: ");
-            Serial.println(SERVO_TYPE_TOPIC);
-            Serial.print("  Dado:");
-            Serial.println(is_positional_servo);
-            
+            MQTT.publish(PS_SERVO_ACT_HALF_POS, String(actual_half_position).c_str());
+            MQTT.publish(PS_SERVO_EXP_FULL_POS, String(expected_full_position).c_str());
+            MQTT.publish(PS_SERVO_ACT_FULL_POS, String(actual_full_position).c_str());            
             finished_running = false;
         }
         if(finished_running && !is_positional_servo) {
+            Serial.print("Velocidade maxima(graus/s): ");
+            Serial.println(max_servo_velocity_deg_s);
+            Serial.print("Menor req. de vel. zero: ");
+            Serial.println(lower_zero_vel_freq);
+            Serial.print("Maior req. de vel. zero: ");
+            Serial.println(upper_zero_vel_freq);
             MQTT.publish(SERVO_TYPE_TOPIC, String(is_positional_servo).c_str());
             MQTT.publish(CS_VELOCITY_TOPIC, String(max_servo_velocity_deg_s).c_str());
             MQTT.publish(CS_LOWER_ZERO_VEL_TOPIC, String(lower_zero_vel_freq).c_str());
             MQTT.publish(CS_UPPER_ZERO_VEL_TOPIC, String(upper_zero_vel_freq).c_str());
-            Serial.print("Tipo de servo publicado no tópico: ");
-            Serial.println(SERVO_TYPE_TOPIC);
-            Serial.print("  Dado:");
-            Serial.println(is_positional_servo);
             finished_running = false;
         }
         MQTT.loop();
@@ -134,6 +140,7 @@ void publish_mqtt_msg(void* parameter) {
 }
 
 void servo_test_routine() {
+    vTaskDelay(100);
     for(;;) {
         // TODO0: wait's a click to start program
         set_running_led_state(0);

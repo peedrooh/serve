@@ -3,13 +3,13 @@
 bool check_positional_servo_params(bool& servo_is_accurate, float& initial_servo_position, float& second_servo_position, int& expected_half_position, int& expected_full_position, float& actual_half_position, float& actual_full_position) {
     servo_is_accurate = false;
     
-    if(!rotate_servo(0, 1000, 50)) return false;
+    if(!rotate_servo(0, 2000, 50)) return false;
     read_raw_angle();
     delay(200);
     initial_servo_position = degAngle;
 
     // send servo to 50%
-    if(!rotate_servo(50, 1000, 50)) return false;
+    if(!rotate_servo(50, 2000, 50)) return false;
     read_raw_angle();
     delay(200);
     second_servo_position = degAngle;
@@ -32,7 +32,7 @@ bool check_positional_servo_params(bool& servo_is_accurate, float& initial_servo
 
 
     // send servo to 100%
-    if(!rotate_servo(105, 1000, 50)) return false;
+    if(!rotate_servo(105, 2000, 50)) return false;
     read_raw_angle();
     delay(200);
     second_servo_position = degAngle;

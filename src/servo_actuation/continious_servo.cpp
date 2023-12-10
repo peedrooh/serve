@@ -8,27 +8,42 @@ bool check_continuos_rotation_params(float& initial_servo_position, float& secon
     delay(500);
     
     read_raw_angle();
-    initial_servo_position = degAngle;
-    if(!rotate_servo(100, 500, 50)) return false;
-    read_raw_angle();
-    second_servo_position = degAngle;
-    max_servo_velocity_1 = abs(second_servo_position - initial_servo_position)/0.5;
-    delay(1000);
+    if(degAngle > 300) {
+        if(!rotate_servo(100, 100, 50)) return false;
+    }
 
     read_raw_angle();
     initial_servo_position = degAngle;
-    if(!rotate_servo(100, 500, 50))  return false;
+    if(!rotate_servo(100, 200, 50)) return false;
     read_raw_angle();
     second_servo_position = degAngle;
-    max_servo_velocity_2 = abs(second_servo_position - initial_servo_position)/0.5;
+    max_servo_velocity_1 = abs(second_servo_position - initial_servo_position)/0.2;
     delay(1000);
 
     read_raw_angle();
+    if(degAngle > 300) {
+        if(!rotate_servo(100, 100, 50)) return false;
+    }
+
+    read_raw_angle();
     initial_servo_position = degAngle;
-    if(!rotate_servo(100, 500, 50))  return false;
+    if(!rotate_servo(100, 200, 50))  return false;
     read_raw_angle();
     second_servo_position = degAngle;
-    max_servo_velocity_3 = abs(second_servo_position - initial_servo_position)/0.5;
+    max_servo_velocity_2 = abs(second_servo_position - initial_servo_position)/0.2;
+    delay(1000);
+
+    read_raw_angle();
+    if(degAngle > 300) {
+        if(!rotate_servo(100, 100, 50)) return false;
+    }
+    
+    read_raw_angle();
+    initial_servo_position = degAngle;
+    if(!rotate_servo(100, 200, 50))  return false;
+    read_raw_angle();
+    second_servo_position = degAngle;
+    max_servo_velocity_3 = abs(second_servo_position - initial_servo_position)/0.2;
     delay(1000);
     
     max_velocity = (max_servo_velocity_1+max_servo_velocity_2+max_servo_velocity_3)/3;
@@ -57,7 +72,7 @@ bool check_continuos_rotation_params(float& initial_servo_position, float& secon
         delay(200);
         second_servo_position = degAngle;
 
-        if(initial_servo_position != second_servo_position) break;
+        if(initial_servo_position < second_servo_position - 2) break;
     }
     upper_zero_vel_freq = i;
     return true;
